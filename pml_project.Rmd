@@ -1,0 +1,90 @@
+Practical Machine Learning: Prediction Assignment Writeup
+========================================================
+
+**Data analysis involved following:-**  
+- Read paper: <a href="http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf">Qualitative Activity Recognition of Weight Lifting Exercises</a>
+- Original authors used 17 features. They were analyzed using rpart and rf
+- It was concluded that the train and test data was created by splitting original data
+- Based on above it was easy to limit the predictors to following 3:-
+    - raw_timestamp_part_1
+    - new_window
+    - num_window
+- Because of this simplification, the **accuracy** was: **99.95%**
+
+**Algorithm used**  
+- Read data
+- Clean data
+- Partition data in training and validation set
+- Use **random forest** to train the model
+- Analyze the accuracy on training data
+- Analyze the accuracy on validation data
+- Read test data
+- Clean test data
+- Predict on test data
+```{r algorithm, echo=FALSE}
+library(caret, quietly=TRUE)
+run_algorithm <- function() {
+    ## Read data
+    df <- read.csv("pml-training.csv", na.strings=c("NA", "#DIV/0!"), stringsAsFactors=TRUE)
+    ## Clean data
+    p <- c("raw_timestamp_part_1", "new_window", "num_window", "classe")
+    df <- df[,p]
+    ## Partition data: training and validation data set
+    set.seed(12345)
+    inTrain <- createDataPartition(df$classe, p=0.8, list=FALSE)
+    traindata <<- df[inTrain,]
+    validation <<- df[-inTrain,]
+    ## Train model
+    modFit <<- train(classe ~ ., data=traindata, method="rf")
+    ## Predict on training data
+    train_pred <<- predict(modFit, traindata)
+    ## Predict on validation data
+    validation_pred <<- predict(modFit, validation)
+    ## Predict on test data
+        ## read test data
+    test <- read.csv("pml-testing.csv", na.strings=c("NA", "#DIV/0!"), stringsAsFactors=TRUE)
+        ## clean test data
+    test <- test[,c("raw_timestamp_part_1", "new_window", "num_window")]
+        ## predict on test data
+    predict(modFit, test)
+}
+print_table <- function(predicted_outcome, outcome) {
+    confusionMatrix(predicted_outcome, outcome)$table
+}
+print_overall_accuracy <- function() {
+    confusionMatrix(validation_pred, validation$classe)$overall[1][[1]]
+}
+print_errors_overall <- function() {
+    confusionMatrix(validation_pred, validation$classe)$overall
+}
+print_errors_byclass <- function() {
+    confusionMatrix(validation_pred, validation$classe)$byClass
+}
+```
+
+<h4>Run algorithm</h4>
+```{r execution}
+test_pred <- run_algorithm()
+```
+
+<h4>Prediction on validation data</h4>
+```{r echo=FALSE}
+print_table(validation_pred, validation$classe)
+```
+
+<h4>Accuracy of algorithm: `r paste(round(print_overall_accuracy() * 100, 2), "%")`</h4>
+
+<h4>Error rates: Overall</h4>
+```{r echo=FALSE}
+print_errors_overall()
+```
+
+<h4>Error rates: By each class</h4>
+```{r echo=FALSE}
+print_errors_byclass()
+```
+
+<h4>Final prediction on test data</h4>
+```{r echo=FALSE}
+table(test_pred)
+```
